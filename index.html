@@ -327,29 +327,14 @@ CREATE TABLE customer_order_items (
 
 <section class="card" id="query">
     <h2>Шаблон запроса для модуля 3</h2>
-    <pre><code class="language-sql">SELECT
-    customer_orders.order_number,
-    SUM(
-        customer_order_items.quantity
-        * specification_items.material_quantity
-        * materials.price
-    ) AS order_material_cost
-FROM customer_orders
-JOIN customer_order_items
-    ON customer_order_items.order_id = customer_orders.id
-JOIN products
-    ON products.id = customer_order_items.product_id
-JOIN specifications
-    ON specifications.product_id = products.id
-JOIN specification_items
-    ON specification_items.specification_id = specifications.id
-JOIN materials
-    ON materials.id = specification_items.material_id
-GROUP BY customer_orders.order_number
-ORDER BY customer_orders.order_number;</code></pre>
+    <pre><code class="language-sql">SELECT SUM(order_products.quantity * specifications_material.quantity * prices.price)
+FROM order_products
+JOIN specifications ON order_products.product_id = specifications.product_id
+JOIN specifications_material ON specifications.id = specifications_material.specification_id
+JOIN prices ON specifications_material.material_id = prices.material_id;</code></pre>
     <p class="note">
-        Это самый простой шаблон под типовой модуль 3. Если в варианте поменяют названия,
-        тебе обычно нужно заменить только имена таблиц, полей заказа, количества, нормы расхода и цены материала.
+        Это короткий шаблон, который считает общую стоимость материалов по заказанным товарам.
+        Здесь уже используется то же имя таблицы, что и в принятой схеме выше: <code>specifications</code>.
     </p>
 </section>
 
@@ -357,43 +342,42 @@ ORDER BY customer_orders.order_number;</code></pre>
     <h2>Как читается этот запрос построчно</h2>
     <ol>
         <li><code>SELECT</code> начинает выборку данных, которые ты хочешь увидеть в результате.</li>
-        <li><code>customer_orders.order_number</code> выводит номер заказа, чтобы было понятно, для какого заказа считается сумма.</li>
-        <li><code>SUM(...)</code> суммирует стоимость материалов по всем строкам и всем материалам внутри заказа.</li>
-        <li><code>customer_order_items.quantity</code> это количество продукции в заказе.</li>
-        <li><code>specification_items.material_quantity</code> это норма расхода материала на одну единицу продукции.</li>
-        <li><code>materials.price</code> это цена одного материала.</li>
+        <li><code>SUM(...)</code> складывает все рассчитанные значения в одну итоговую сумму.</li>
+        <li><code>order_products.quantity</code> это количество продукции в заказе.</li>
+        <li><code>specifications_material.quantity</code> это количество материала по спецификации на одну единицу продукции.</li>
+        <li><code>prices.price</code> это цена материала.</li>
         <li>Когда ты умножаешь количество продукции на норму расхода и на цену материала, получаешь стоимость материала для этой позиции.</li>
-        <li><code>AS order_material_cost</code> задаёт удобное имя итоговому столбцу.</li>
-        <li><code>FROM customer_orders</code> показывает, с какой основной таблицы начинается построение запроса.</li>
-        <li><code>JOIN customer_order_items ON customer_order_items.order_id = customer_orders.id</code> присоединяет строки заказа к самому заказу.</li>
-        <li><code>JOIN products ON products.id = customer_order_items.product_id</code> присоединяет продукцию, которая указана в строке заказа.</li>
-        <li><code>JOIN specifications ON specifications.product_id = products.id</code> находит спецификацию для этой продукции.</li>
-        <li><code>JOIN specification_items ON specification_items.specification_id = specifications.id</code> получает материалы, входящие в спецификацию.</li>
-        <li><code>JOIN materials ON materials.id = specification_items.material_id</code> получает цену и название материала.</li>
-        <li><code>GROUP BY customer_orders.order_number</code> собирает все строки одного заказа в одну итоговую строку.</li>
-        <li><code>ORDER BY customer_orders.order_number</code> просто сортирует результат по номеру заказа.</li>
+        <li><code>FROM order_products</code> говорит, что основной таблицей являются строки заказа.</li>
+        <li><code>JOIN specifications ON order_products.product_id = specifications.product_id</code> связывает товар из заказа со спецификацией этого товара.</li>
+        <li><code>JOIN specifications_material ON specifications.id = specifications_material.specification_id</code> получает материалы, входящие в спецификацию.</li>
+        <li><code>JOIN prices ON specifications_material.material_id = prices.material_id</code> получает цену материала.</li>
+        <li>Так как здесь нет <code>GROUP BY</code>, результат будет одной строкой с одной общей суммой.</li>
     </ol>
 </section>
 
 <section class="card">
     <h2>Как применить запрос на своём варианте</h2>
     <ol>
-        <li>Найди таблицу заказа. Это аналог <code>customer_orders</code>.</li>
-        <li>Найди таблицу строк заказа. Это аналог <code>customer_order_items</code>.</li>
-        <li>Найди таблицу продукции. Это аналог <code>products</code>.</li>
-        <li>Найди таблицу спецификации или состава. Это аналог <code>specifications</code> и <code>specification_items</code>.</li>
-        <li>Найди таблицу материалов. Это аналог <code>materials</code>.</li>
-        <li>Проверь 4 ключевых поля: номер заказа, количество продукции, норма расхода материала, цена материала.</li>
+        <li>Найди таблицу строк заказа. Это аналог <code>order_products</code>.</li>
+        <li>Найди таблицу спецификаций. Это аналог <code>specifications</code>.</li>
+        <li>Найди таблицу материалов в спецификации. Это аналог <code>specifications_material</code>.</li>
+        <li>Найди таблицу цен. Это аналог <code>prices</code>.</li>
+        <li>Проверь 3 главных поля: количество товара в заказе, количество материала по спецификации, цена материала.</li>
         <li>После этого просто замени названия таблиц и полей в шаблоне, не меняя саму логику соединений.</li>
     </ol>
     <pre><code class="language-sql">Что обычно заменяется:
-customer_orders                 -> ваша таблица заказов
-customer_order_items            -> ваша таблица строк заказа
-customer_order_items.quantity   -> ваше поле количества
-specification_items             -> ваша таблица состава
-specification_items.material_quantity -> ваше поле нормы расхода
-materials                       -> ваша таблица материалов
-materials.price                 -> ваше поле цены</code></pre>
+order_products                         -> ваша таблица строк заказа
+order_products.quantity                -> ваше поле количества товара
+specifications                         -> ваша таблица спецификаций
+specifications.product_id              -> поле связи спецификации с товаром
+specifications_material                -> ваша таблица материалов спецификации
+specifications_material.quantity       -> поле нормы расхода материала
+prices                                 -> ваша таблица цен
+prices.price                           -> поле цены материала
+prices.material_id                     -> поле связи цены с материалом</code></pre>
+    <p class="note">
+        Если нужно получить сумму не по всем данным сразу, а отдельно по каждому заказу, тогда нужно добавить в запрос поле номера заказа и <code>GROUP BY</code>.
+    </p>
 </section>
 
 <section class="grid">
